@@ -70,7 +70,7 @@ stop () {
 	write_config
 	knife node delete $NODE_NAME -c $CHEF_CONFIG_PATH -y
 	knife client delete $NODE_NAME -c $CHEF_CONFIG_PATH -y
-
+	rm -vf /etc/chef/client.pem
 }
 
 status () {
