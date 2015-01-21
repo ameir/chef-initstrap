@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# chkconfig: - 99 15
+# description: Bootstrap node with Chef on startup
+
 ### BEGIN INIT INFO
 # Provides: chef-initstrap
 # Required-Start: $network $all
@@ -9,27 +12,33 @@
 # Description: Bootstrap node with Chef on startup
 ### END INIT INFO
 
+declare -A CONFIG
+
 CHEF_ENVIRONMENT='mysite_dev'
 CHEF_RUN_LIST='recipe[mysite]'
-#CHEF_CONFIG='/etc/chef/client.rb'
-CHEF_SERVER_URL=''
-CHEF_VALIDATOR_NAME='chef-validator'
-CHEF_VALIDATOR_KEY='/etc/chef/validator.pem'
-
-LOG_EMAIL=''
+CHEF_CONFIG_PATH='/etc/chef/client.rb'
+LOG_EMAIL='you@company.com'
 LOG_LEVEL='info'
 LOG_PATH="/var/tmp/chef_bootstrap_`date -u +'%F_%H%M'`.log"
+NODE_NAME=`hostname -f`
+
+CONFIG['chef_server_url']="'https://chef.company.com'"
+CONFIG['validation_client_name']="'chef-validator'"
+CONFIG['validation_key']="'/etc/chef/validator.pem'"
+CONFIG['ssl_verify_mode']=':verify_none'
+CONFIG['node_name']="'$NODE_NAME'"
 
 start () {
 	
-	if [[ ! -e /usr/bin/chef-client || `/usr/bin/chef-client -v | awk -F '.' '{print ($2 < 12)}'` -eq 1 ]]; then
-		curl -L https://www.opscode.com/chef/install.sh | bash
-		# TODO fallback to wget if curl isn't available
-		# wget -qO- https://www.opscode.com/chef/install.sh | bash
+	write_config
+	if [[ ! -e /usr/bin/chef-client || `/usr/bin/chef-client -v | awk -F '.' '{print ($1 == 11 && $2 < 12)}'` -eq 1 ]]; then
+		installer_url='https://www.chef.io/chef/install.sh'
+		curl -L -O $installer_url || wget --no-check-certificate $installer_url
+		bash install.sh
 	fi
 	
 	if [[ ! -d /etc/chef ]]; then
-		echo "Directory /etc/chef not found; creating it"
+		echo "Directory /etc/chef not found; creating it."
 		mkdir -p /etc/chef
 	fi
 	
@@ -44,27 +53,7 @@ start () {
 		options+="-E '$CHEF_ENVIRONMENT' "
 	fi
 
-	if [[ -n $CHEF_SERVER_URL ]]; then
-		options+="-S '$CHEF_SERVER_URL' "
-	fi
-
-	if [[ -n $CHEF_VALIDATOR_KEY ]]; then
-		options+="-K '$CHEF_VALIDATOR_KEY' "
-	fi
-
-	if [[ -z $CHEF_CONFIG ]]; then
-		if [[ $CHEF_VALIDATOR_NAME != 'chef-validator' ]]; then
-			CHEF_CONFIG="/var/tmp/chef-initstrap-client.rb"
-			echo "validation_client_name '$CHEF_VALIDATOR_NAME'" > $CHEF_CONFIG
-		else
-			CHEF_CONFIG='/dev/null'
-		fi
-	fi
-	options+="-c '$CHEF_CONFIG' "
-
-	options+="-l $LOG_LEVEL -L $LOG_PATH"
-
-	# /opt/chef/embedded/bin/ruby -e "require 'json';puts JSON.generate(ARGF.readlines, quirks_mode: true)"
+	options+="-c '$CHEF_CONFIG_PATH' -L $LOG_PATH"
 	cmd="chef-client $options"
 	echo "Running:  $cmd";
 	eval $cmd; return_code=$?
@@ -72,16 +61,36 @@ start () {
 	if [[ -e $LOG_PATH && -n $LOG_EMAIL ]]; then
 		echo "Sending log of Chef run to $LOG_EMAIL"
 		[[ $return_code -eq 0 ]] && status="Successful" || status="Failed"
-		cat $LOG_PATH | mail -s "($status) Chef run for `hostname -f`" -- $LOG_EMAIL
+		cat $LOG_PATH | mail -s "($status) Chef run for $NODE_NAME" -- $LOG_EMAIL
 	fi
 }
 
 stop () {
-	echo "stop not defined yet"
+
+	write_config
+	knife node delete $NODE_NAME -c $CHEF_CONFIG_PATH -y
+	knife client delete $NODE_NAME -c $CHEF_CONFIG_PATH -y
+
 }
 
 status () {
 	echo "status not defined yet"
+}
+
+write_config () {
+	mkdir -vp `dirname $CHEF_CONFIG_PATH`
+	for i in "${!CONFIG[@]}"; do echo -e "$i\t\t\t${CONFIG[$i]}"; done > $CHEF_CONFIG_PATH
+}
+
+install () {
+	echo -n "Installing init script..."
+	script_path=`readlink -fn $0`
+	chmod +x $script_path
+	ln -sf $script_path /etc/init.d/chef-initstrap
+	for rl in 2 3 5; do
+		ln -sf ../init.d/chef-initstrap /etc/rc${rl}.d/S99chef-initstrap
+	done
+	echo "done."
 }
 
 case "$1" in
@@ -93,7 +102,10 @@ case "$1" in
     	;;
     status)
     	status
-    	;;    	
+    	;;    
+    install)
+    	install
+    	;;        		
     *)
     	echo "Usage: $0 start|stop|status"
     	;;
