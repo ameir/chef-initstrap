@@ -53,7 +53,7 @@ start () {
 		options+="-E '$CHEF_ENVIRONMENT' "
 	fi
 
-	options+="-c '$CHEF_CONFIG_PATH' -L $LOG_PATH"
+	options+="-c '$CHEF_CONFIG_PATH' -l $LOG_LEVEL -L '$LOG_PATH'"
 	cmd="chef-client $options"
 	echo "Running:  $cmd";
 	eval $cmd; return_code=$?
