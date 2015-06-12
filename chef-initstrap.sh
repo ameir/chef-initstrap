@@ -29,26 +29,26 @@ CONFIG['ssl_verify_mode']=':verify_none'
 CONFIG['node_name']="'$NODE_NAME'"
 
 start () {
-	
+
 	write_config
 	if [[ ! -e /usr/bin/chef-client || `/usr/bin/chef-client -v | awk -F '.' '{print ($1 == 11 && $2 < 12)}'` -eq 1 ]]; then
 		installer_url='https://www.chef.io/chef/install.sh'
 		curl -L -O $installer_url || wget --no-check-certificate $installer_url
 		bash install.sh
 	fi
-	
+
 	if [[ ! -d /etc/chef ]]; then
 		echo "Directory /etc/chef not found; creating it."
 		mkdir -p /etc/chef
 	fi
-	
+
 	if [[ -z $CHEF_RUN_LIST ]]; then
 		echo "No run list was defined!"
 		exit 1
 	else
 		options="-r '$CHEF_RUN_LIST' "
 	fi
-	
+
 	if [[ -n $CHEF_ENVIRONMENT ]]; then
 		options+="-E '$CHEF_ENVIRONMENT' "
 	fi
@@ -57,7 +57,7 @@ start () {
 	cmd="chef-client $options"
 	echo "Running:  $cmd";
 	eval $cmd; return_code=$?
-	
+
 	if [[ -e $LOG_PATH && -n $LOG_EMAIL ]]; then
 		echo "Sending log of Chef run to $LOG_EMAIL"
 		[[ $return_code -eq 0 ]] && status="Successful" || status="Failed"
@@ -95,18 +95,18 @@ install () {
 
 case "$1" in
 	start)
-		start
-        ;;
-    stop)
-    	stop
-    	;;
-    status)
-    	status
-    	;;    
-    install)
-    	install
-    	;;        		
-    *)
-    	echo "Usage: $0 start|stop|status"
-    	;;
+	  start
+	  ;;
+	stop)
+	  stop
+	  ;;
+	status)
+	  status
+	  ;;
+	install)
+	  install
+	  ;;
+	*)
+	  echo "Usage: $0 start|stop|status"
+	  ;;
 esac
