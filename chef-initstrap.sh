@@ -31,7 +31,7 @@ CONFIG['node_name']="'$NODE_NAME'"
 start () {
 
 	write_config
-	if [[ ! -e /usr/bin/chef-client || `/usr/bin/chef-client -v | awk -F '.' '{print ($1 == 11 && $2 < 12)}'` -eq 1 ]]; then
+	if [[ ! -e /usr/bin/chef-client ]]; then
 		installer_url='https://www.chef.io/chef/install.sh'
 		curl -L -O $installer_url || wget --no-check-certificate $installer_url
 		bash install.sh
