@@ -63,6 +63,8 @@ start () {
 		[[ $return_code -eq 0 ]] && status="Successful" || status="Failed"
 		cat $LOG_PATH | mail -s "($status) Chef run for $NODE_NAME" -- $LOG_EMAIL
 	fi
+
+	exit $return_code
 }
 
 stop () {
