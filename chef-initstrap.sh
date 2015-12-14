@@ -12,22 +12,6 @@
 # Description: Bootstrap node with Chef on startup
 ### END INIT INFO
 
-declare -A CONFIG
-
-CHEF_ENVIRONMENT='mysite_dev'
-CHEF_RUN_LIST='recipe[mysite]'
-CHEF_CONFIG_PATH='/etc/chef/client.rb'
-LOG_EMAIL='you@company.com'
-LOG_LEVEL='info'
-LOG_PATH="/var/tmp/chef_bootstrap_`date -u +'%F_%H%M'`.log"
-NODE_NAME=`hostname -f`
-
-CONFIG['chef_server_url']="'https://chef.company.com'"
-CONFIG['validation_client_name']="'chef-validator'"
-CONFIG['validation_key']="'/etc/chef/validator.pem'"
-CONFIG['ssl_verify_mode']=':verify_none'
-CONFIG['node_name']="'$NODE_NAME'"
-
 start () {
 
 	write_config
@@ -94,6 +78,15 @@ install () {
 	done
 	echo "done."
 }
+
+if [[ -z $CHEF_INITSTRAP_CONFIG ]]; then
+	CHEF_INITSTRAP_CONFIG="/etc/chef-initstrap.conf"
+fi
+
+if [[ ! -f $CHEF_INITSTRAP_CONFIG ]]; then
+	echo "The chef-initstrap config file was not found at ${CHEF_INITSTRAP_CONFIG}."
+	exit 1
+fi
 
 case "$1" in
 	start)
