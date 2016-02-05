@@ -87,6 +87,7 @@ if [[ ! -f $CHEF_INITSTRAP_CONFIG ]]; then
 	echo "The chef-initstrap config file was not found at ${CHEF_INITSTRAP_CONFIG}."
 	exit 1
 fi
+. $CHEF_INITSTRAP_CONFIG
 
 case "$1" in
 	start)
